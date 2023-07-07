@@ -1,0 +1,14 @@
+{
+    "require": {
+        "nette/php-generator": "^3.2",
+        "symfony/console": "^4.1",
+        "doctrine/event-manager": "^1.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Legacy\\": "classes/",
+            "Legacy\\API\\": "api/classes/",
+            "Console\\": "console/"
+        }
+    }
+}
