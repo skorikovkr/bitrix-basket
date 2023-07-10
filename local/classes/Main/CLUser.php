@@ -318,7 +318,7 @@ class CLUser extends \CUser
         return false;
     }
 
-    public static function SendPassword($LOGIN, $EMAIL, $SITE_ID = false, $captcha_word = "", $captcha_sid = 0, $phoneNumber = "")
+    public static function SendPassword($LOGIN, $EMAIL, $SITE_ID = false, $captcha_word = "", $captcha_sid = 0, $phoneNumber = "", $shortCode = false)
     {
         /** @global CMain $APPLICATION */
         global $DB, $APPLICATION;

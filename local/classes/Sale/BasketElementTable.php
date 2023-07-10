@@ -6,8 +6,9 @@ use Bitrix\Main\DB\SqlExpression;
 use Bitrix\Main\Entity\Query;
 use Bitrix\Main\Entity\ReferenceField;
 use Bitrix\Sale\Internals\BasketTable;
+use Bitrix\Iblock\ElementTable;
 
-class BasketElementTable extends \Bitrix\Iblock\ElementTable
+class BasketElementTable extends ElementTable
 {
     public static function withSelect(Query $query)
     {

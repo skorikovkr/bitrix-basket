@@ -113,6 +113,6 @@ final class Api
             $result['result'] = ['message' => $e->getMessage()];
         }
 
-        return json_encode($result);
+        return json_encode($result, JSON_UNESCAPED_UNICODE);
     }
 }
