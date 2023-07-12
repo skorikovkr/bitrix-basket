@@ -86,11 +86,6 @@ class Basket
         return $this->basket;
     }
 
-    public function getUser()
-    {
-        return new User($this->order->getUserId());
-    }
-
     public function addProduct($product) {
         return \Bitrix\Catalog\Product\Basket::addProduct($product);
     }
