@@ -9,8 +9,6 @@ use Legacy\Main\User;
 
 class Basket
 {
-    /** @var Sale\Order $order */
-    var $order;
     /** @var Sale\Basket $basket */
     var $basket;
 
@@ -27,45 +25,18 @@ class Basket
         if (!Loader::includeModule('iblock')) {
             throw new \Exception('Не удалось подключить модуль "iblock".');
         }
+
+        if (!\CModule::IncludeModule('iblock')) {
+            throw new \Exception('Не удалось подключить модуль "iblock".');
+        }
     }
 
     public static function loadItems()
     {
         global $USER;
         $self = new self;
-        $self->order = Sale\Order::create(Context::getCurrent()->getSite(), $USER->GetID());
         $self->basket = Sale\Basket::loadItemsForFUser(Sale\Fuser::getId(), Context::getCurrent()->getSite());
-        $self->order->setBasket($self->basket);
         return $self;
-    }
-
-    public function setCoupon($coupon)
-    {
-        Sale\DiscountCouponsManager::init(
-            Sale\DiscountCouponsManager::MODE_ORDER, [
-                "userId" => $this->order->getUserId(),
-                "orderId" => $this->order->getId()
-            ]
-        );
-
-        $res = Sale\DiscountCouponsManager::add($coupon);
-        if (!$res) {
-            $coupons = Sale\DiscountCouponsManager::get(true, [], true);
-            $statusList = Sale\DiscountCouponsManager::getStatusList(true);
-            throw new \Exception('Промокод '.$statusList[$coupons[$coupon]['STATUS']]);
-        }
-
-        $discounts = $this->order->getDiscount();
-        $discounts->calculate();
-        $this->save();
-    }
-
-    public function clearCoupon()
-    {
-        Sale\DiscountCouponsManager::clear(true);
-        $discounts = $this->order->getDiscount();
-        $discounts->calculate();
-        $this->save();
     }
 
     public function getPrice()
@@ -76,11 +47,6 @@ class Basket
     public function getLength()
     {
         return $this->basket->count();
-    }
-
-    public function getCoupons()
-    {
-        return Sale\DiscountCouponsManager::get(true, [], false);
     }
 
     public function save()
@@ -95,38 +61,41 @@ class Basket
         return $this->save();
     }
 
-    public function getOrder()
-    {
-        return $this->order;
-    }
-
     public function getBasket()
     {
         return $this->basket;
     }
 
-    public function getOrderProperty(string $code)
-    {
-        $propertyCollection = $this->getOrder()->getPropertyCollection();
-        foreach ($propertyCollection as $property) {
-            if ($property->getField('CODE') == $code) {
-                return $property;
-            }
-        }
-        return null;
-    }
-
-    public function order()
-    {
-        $obResult = $this->order->save();
-        if (!$obResult->isSuccess()) {
-            throw new \Exception(implode('. ', $obResult->getErrorMessages()));
-        }
-        return $obResult->getId();
-    }
-
     public function getUser()
     {
         return new User($this->order->getUserId());
+    }
+
+    public function addProduct($product) {
+        return \Bitrix\Catalog\Product\Basket::addProduct($product);
+    }
+
+    public function changeQuantity($basketItemId, $quantity) {
+        if ($quantity <= 0) {
+            throw new ArgumentException('Неверное количество товара.');
+        }
+        if ($basketItemId <= 0) {
+            throw new ArgumentException('Неверный ID товара.');
+        }
+
+        $basket = Sale\Basket::loadItemsForFUser(Sale\Fuser::getId(), Context::getCurrent()->getSite());
+        $basketItem = $basket->getItemById($basketItemId);
+        $basketItem->setField('QUANTITY', $quantity);
+        $obRes = $basket->save();
+        return $obRes;
+    }
+
+    public function getItems() {
+        $basketRes = Sale\Internals\BasketTable::getList(array(
+            'filter' => array(
+                'FUSER_ID' => Sale\Fuser::getId(),
+            )
+        ));
+        return $basketRes;
     }
 }

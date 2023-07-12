@@ -55,7 +55,7 @@ class BasketElementTable extends ElementTable
     {
         if ($UID > 0) {
             $query->registerRuntimeField(
-                'BASKET', 
+                'BASKET',
                 new ReferenceField(
                     'BASKET',
                     BasketTable::class,
