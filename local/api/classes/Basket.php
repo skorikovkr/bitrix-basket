@@ -6,7 +6,6 @@ use Bitrix\Main\ArgumentException;
 use Bitrix\Main\Context;
 use Bitrix\Main\Loader;
 use Bitrix\Sale;
-use Legacy\General\Constants;
 
 class Basket
 {
@@ -15,8 +14,40 @@ class Basket
         return \CIBlockElement::GetByID($id)->GetNextElement()->GetProperties();
     }
 
-    private static function mapBrandRefsToNames($brandIds) {
+    private static function mapBrandRefsToNames($brands) {
+        $XML_IDs = $brands["VALUE"];
+        $a = $brands['USER_TYPE_SETTINGS'];
+        $tableName = $a['TABLE_NAME'];
+        $hlblock = \Bitrix\Highloadblock\HighloadBlockTable::getList(
+            array("filter" => array(
+                'TABLE_NAME' => $tableName
+            ))
+        )->fetch();
+        $result = [];
+        if (isset($hlblock['ID']))
+        {
+            foreach ($XML_IDs as $XML_ID) {
+                $entity = \Bitrix\Highloadblock\HighloadBlockTable::compileEntity($hlblock);
+                $entity_data_class = $entity->getDataClass();
+                $res = $entity_data_class::getList( array('filter'=>array( 'UF_XML_ID' => $XML_ID,)) );
+                if ($item = $res->fetch())
+                {
+                    $result []= $item["UF_NAME"];
+                }
+            }
+        }
+        return $result;
+    }
 
+    private static function getSectionName($productId) {
+        $rsElement = \CIBlockElement::GetList(array(), array('ID' => $productId), false, false, array('ID', 'IBLOCK_SECTION_ID'));
+        if($arElement = $rsElement->Fetch())
+        {
+            $res = \CIBlockSection::GetByID($arElement['IBLOCK_SECTION_ID']);
+            if($ar_res = $res->GetNext())
+                return  $ar_res['NAME'];
+        }
+        return null;
     }
 
     public static function getLength($arRequest)
@@ -39,6 +70,23 @@ class Basket
         return array_merge(self::getLength($arRequest), self::getPrice($arRequest));
     }
 
+    public static function removeBunch($arRequest)
+    {
+        $ids = [];
+        foreach (json_decode($arRequest["ids"]) as $id)
+            $ids []= intval($id);
+        $basket = \Legacy\Sale\Basket::loadItems();
+        $basket->deleteBunch($ids);
+        return array_merge(self::getLength($arRequest), self::getPrice($arRequest));
+    }
+
+    public static function removeAll()
+    {
+        $basket = \Legacy\Sale\Basket::loadItems();
+        $basket->deleteAll();
+        return array_merge(['length' => $basket->getLength()], ['price' => $basket->getPrice()]);
+    }
+
     public static function add($arRequest)
     {
         $basket = \Legacy\Sale\Basket::loadItems();
@@ -56,7 +104,6 @@ class Basket
 
     public static function setQuantity($arRequest)
     {
-        /** ID товара в корзине */
         $id = intval($arRequest['id']);
         $quantity = intval($arRequest['quantity']);
         $basket = \Legacy\Sale\Basket::loadItems();
@@ -80,38 +127,17 @@ class Basket
             $items[$arr['ID']]['id'] = $arr['ID'];
             $items[$arr['ID']]['name'] = mb_strlen($arr['NAME']) > 35 ? mb_substr($arr['NAME'], 0, 34).'…' : trim($arr['NAME']);
             $items[$arr['ID']]['fullname'] = $arr['NAME'];
-            $items[$arr['ID']]['price'] = $arr['PRICE'];
             $items[$arr['ID']]['price_base'] = $arr['BASE_PRICE'];
             $items[$arr['ID']]['quantity'] = $arr['QUANTITY'];
+            $items[$arr['ID']]['full_price'] = doubleval($arr['QUANTITY']) * doubleval($arr['BASE_PRICE']);
             $items[$arr['ID']]['article'] = $props["ARTNUMBER"]["VALUE"];
             $items[$arr['ID']]['measure'] = $arr["MEASURE_NAME"];
-
-            $XML_IDs = $props["BRAND_REF"]["VALUE"];
-            $a = $props["BRAND_REF"]['USER_TYPE_SETTINGS'];
-            $tableName = $a['TABLE_NAME'];
-            $hlblock = \Bitrix\Highloadblock\HighloadBlockTable::getList(
-                array("filter" => array(
-                    'TABLE_NAME' => $tableName
-                ))
-            )->fetch();
-            if (isset($hlblock['ID']))
-            {
-                foreach ($XML_IDs as $XML_ID) {
-                    $entity = \Bitrix\Highloadblock\HighloadBlockTable::compileEntity($hlblock);
-                    $entity_data_class = $entity->getDataClass();
-                    $res = $entity_data_class::getList( array('filter'=>array( 'UF_XML_ID' => $XML_ID,)) );
-                    if ($item = $res->fetch())
-                    {
-                        $items[$arr['ID']]['brand'] []= $item["UF_NAME"];
-                    }
-                }
-            }
-
-            $items[$arr['ID']]['arr'] = $arr;
-            $items[$arr['ID']]['props'] = $props;
+            $items[$arr['ID']]['brands'] = self::mapBrandRefsToNames($props["BRAND_REF"]);
+            $items[$arr['ID']]['category'] = self::getSectionName($arr['PRODUCT_ID']);
         }
         $result['items'] = $items;
         $result['count'] = count($items);
+        $result['total_price'] = $basket->getPrice();
 
         return $result;
     }

@@ -2,6 +2,7 @@
 
 namespace Legacy\Sale;
 
+use Bitrix\Main\ArgumentException;
 use Bitrix\Main\Context;
 use Bitrix\Main\Loader;
 use Bitrix\Sale;
@@ -58,6 +59,25 @@ class Basket
     {
         $basketItem = $this->basket->getItemById($id);
         $basketItem->delete();
+        return $this->save();
+    }
+
+    public function deleteBunch($ids)
+    {
+        foreach ($ids as $id) {
+            $basketItem = $this->basket->getItemById($id);
+            if ($basketItem)
+                $basketItem->delete();
+        }
+        return $this->save();
+    }
+
+    public function deleteAll()
+    {
+        foreach ($this->getItems() as $item) {
+            $basketItem = $this->basket->getItemById($item["ID"]);
+            $basketItem->delete();
+        }
         return $this->save();
     }
 
